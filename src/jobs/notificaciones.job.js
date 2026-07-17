@@ -63,6 +63,3 @@ cron.schedule("0 2 * * *", () => {
 
 });
 
-console.log(
-  "✅ Job de limpieza de mensajes iniciado"
-);
