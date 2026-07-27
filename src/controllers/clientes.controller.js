@@ -1,4 +1,7 @@
 const db = require("../config/db");
+const {
+  registrarAuditoria
+} = require("../services/auditoria.service");
 
 /**
  * GET /api/clientes
@@ -101,11 +104,29 @@ exports.crearCliente = (req, res) => {
       usuario_id,
       estado_civil
     ],
-    (error, result) => {
-      if (error) {
-        console.error(error);
-        return res.status(500).json({ mensaje: "Error al crear cliente" });
-      }
+          (error, result) => {
+            if (error) {
+              console.error(error);
+              return res.status(500).json({
+                mensaje: "Error al crear cliente"
+              });
+            }
+
+
+        console.log(
+        "AUDITORIA",
+        req.usuario.id,
+        result.insertId,
+        nombre
+      );
+
+      registrarAuditoria(
+        req.usuario.id,
+        "CREAR",
+        "CLIENTE",
+        result.insertId,
+        `Creó el cliente ${nombre}`
+      );
 
       res.json({
         mensaje: "Cliente creado correctamente ✅",
@@ -114,7 +135,7 @@ exports.crearCliente = (req, res) => {
     }
   );
 };
-``
+
 
 
 /**
@@ -122,6 +143,7 @@ exports.crearCliente = (req, res) => {
  * Eliminar cliente y dependencias
  */
 const eliminarCliente = async (req, res) => {
+
   const { id } = req.params;
   const usuario = req.usuario;
 
@@ -134,7 +156,22 @@ const eliminarCliente = async (req, res) => {
   const conn = await db.promise().getConnection();
 
   try {
+
     await conn.beginTransaction();
+
+    const [clienteRows] = await conn.execute(
+      `
+      SELECT nombre
+      FROM clientes
+      WHERE id = ?
+      `,
+      [id]
+    );
+
+    const nombreCliente =
+      clienteRows.length > 0
+        ? clienteRows[0].nombre
+        : "Cliente desconocido";
 
     // ✅ 1 eliminar cuotas
     await conn.execute(`
@@ -143,32 +180,41 @@ const eliminarCliente = async (req, res) => {
       WHERE p.cliente_id = ?
     `, [id]);
 
-    // 🔥 2 eliminar FIADORES (ESTO ES LO QUE FALTABA)
+    // ✅ 2 eliminar fiadores
     await conn.execute(`
       DELETE f FROM fiadores f
       JOIN prestamos p ON f.prestamo_id = p.id
       WHERE p.cliente_id = ?
     `, [id]);
 
-    // ✅ 3 eliminar préstamos
+    // ✅ 3 eliminar anulaciones
     await conn.execute(`
-      DELETE FROM prestamos 
+      DELETE ap
+      FROM anulaciones_prestamos ap
+      JOIN prestamos p
+        ON ap.prestamo_id = p.id
+      WHERE p.cliente_id = ?
+    `, [id]);
+
+    // ✅ 4 eliminar préstamos
+    await conn.execute(`
+      DELETE FROM prestamos
       WHERE cliente_id = ?
     `, [id]);
 
-    // ✅ 4 eliminar comentarios
+    // ✅ 5 eliminar comentarios
     await conn.execute(`
       DELETE FROM comentarios_clientes
       WHERE cliente_id = ?
     `, [id]);
 
-    // ✅ 5 eliminar recordatorios
+    // ✅ 6 eliminar recordatorios
     await conn.execute(`
       DELETE FROM recordatorios
       WHERE cliente_id = ?
     `, [id]);
 
-    // ✅ 6 eliminar cliente
+    // ✅ 7 eliminar cliente
     await conn.execute(`
       DELETE FROM clientes
       WHERE id = ?
@@ -176,20 +222,37 @@ const eliminarCliente = async (req, res) => {
 
     await conn.commit();
 
-    res.json({ mensaje: "Cliente eliminado correctamente ✅" });
+    registrarAuditoria(
+      req.usuario.id,
+      "ELIMINAR",
+      "CLIENTE",
+      id,
+      `Eliminó el cliente ${nombreCliente}`
+    );
+
+    res.json({
+      mensaje: "Cliente eliminado correctamente ✅"
+    });
 
   } catch (error) {
+
     await conn.rollback();
 
-    console.error("Error eliminando cliente:", error);
+    console.error(
+      "Error eliminando cliente:",
+      error
+    );
 
     res.status(500).json({
       mensaje: "Error eliminando cliente"
     });
 
   } finally {
+
     conn.release();
+
   }
+
 };
 
 /**
@@ -227,20 +290,21 @@ exports.obtenerClientesFrecuentes = (req, res) => {
   });
 };
 exports.actualizarCliente = (req, res) => {
+
   const { id } = req.params;
 
   const {
-  nombre,
-  cedula,
-  sexo,
-  telefono,
-  departamento_id,
-  municipio_id,
-  trabajo_id,
-  barrio_id,
-  direccion,
-  estado_civil // ✅ AGREGAR
-} = req.body;
+    nombre,
+    cedula,
+    sexo,
+    telefono,
+    departamento_id,
+    municipio_id,
+    trabajo_id,
+    barrio_id,
+    direccion,
+    estado_civil
+  } = req.body;
 
   const sql = `
     UPDATE clientes
@@ -274,14 +338,30 @@ exports.actualizarCliente = (req, res) => {
       id
     ],
     err => {
+
       if (err) {
         console.error(err);
-        return res.status(500).json({ mensaje: "Error al actualizar cliente" });
+
+        return res.status(500).json({
+          mensaje: "Error al actualizar cliente"
+        });
       }
 
-      res.json({ mensaje: "Cliente actualizado ✅" });
+      registrarAuditoria(
+        req.usuario.id,
+        "EDITAR",
+        "CLIENTE",
+        id,
+        `Editó el cliente ${nombre}`
+      );
+
+      res.json({
+        mensaje: "Cliente actualizado ✅"
+      });
+
     }
   );
+
 };
 
 const obtenerClientesDashboard = (req, res) => {

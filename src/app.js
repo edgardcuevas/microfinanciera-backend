@@ -20,6 +20,7 @@ const usuariosRoutes = wrap(require("./routes/usuarios.routes"));
 const recordatoriosRoutes = wrap(require("./routes/recordatorios.routes"));
 const departamentosRoutes = wrap(require("./routes/departamentos.routes"));
 const mensajesRoutes = wrap(require("./routes/mensajes.routes"));
+const auditoriaRoutes = wrap(require("./routes/auditoria.routes"));
 
 
 const app = express();
@@ -78,6 +79,7 @@ app.use("/api/usuarios", usuariosRoutes);
 app.use("/api/recordatorios", recordatoriosRoutes);
 app.use("/api/departamentos", departamentosRoutes);
 app.use("/api/mensajes", mensajesRoutes);
+app.use("/api/auditoria", auditoriaRoutes);
 require("./jobs/mora.job");
 require("./jobs/notificaciones.job");
 

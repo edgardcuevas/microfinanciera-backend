@@ -1,4 +1,7 @@
 const db = require("../config/db");
+const {
+  registrarAuditoria
+} = require("../services/auditoria.service");
 
 /*
 ====================================================
@@ -109,6 +112,7 @@ const sql = `
   ORDER BY p.fecha_inicio DESC
 `;
 const crearPrestamo = (req, res) => {
+
   const {
     cliente_id,
     monto,
@@ -119,80 +123,108 @@ const crearPrestamo = (req, res) => {
     fiador,
     garantia
   } = req.body;
+
   // 🛑 Validaciones básicas
   if (!cliente_id || !monto || !interes || !plazo || !tipo_cuota) {
-    return res.status(400).json({ mensaje: "Datos incompletos" });
+    return res.status(400).json({
+      mensaje: "Datos incompletos"
+    });
   }
 
-  // ✅ ✅ NUEVO — VALIDACIONES DE RESPALDO
+  // ✅ Validaciones de respaldo
   if (!tipo_respaldo) {
-    return res.status(400).json({ mensaje: "Tipo de respaldo requerido" });
+    return res.status(400).json({
+      mensaje: "Tipo de respaldo requerido"
+    });
   }
 
   if (tipo_respaldo === "fiador") {
+
     if (!fiador || !fiador.nombre || !fiador.cedula) {
+
       return res.status(400).json({
         mensaje: "Datos del fiador incompletos"
       });
+
     }
+
   }
 
   if (tipo_respaldo === "garantia") {
+
     if (!garantia) {
+
       return res.status(400).json({
         mensaje: "Debe especificar la garantía"
       });
+
     }
+
   }
-  // ✅ ✅ FIN NUEVO
 
   const usuario_id = req.usuario.id;
 
-  // 🔒 BLOQUEO: NO PERMITIR MÁS DE UN PRÉSTAMO ACTIVO
   db.query(
     "SELECT id FROM prestamos WHERE cliente_id = ? AND estado = 'activo' LIMIT 1",
     [cliente_id],
     (err, rows) => {
+
       if (err) {
-        console.error("Error validando préstamo activo:", err);
+
+        console.error(
+          "Error validando préstamo activo:",
+          err
+        );
+
         return res.status(500).json({
           mensaje: "Error validando préstamo activo"
         });
+
       }
 
       if (rows.length > 0) {
+
         return res.status(400).json({
           mensaje: "Este cliente ya tiene un préstamo activo"
         });
+
       }
 
       crearPrestamoInterno();
+
     }
   );
 
   function crearPrestamoInterno() {
+
     const montoNum = Number(monto);
     const interesNum = Number(interes);
 
-    const total = montoNum + (montoNum * (interesNum / 100));
+    const total =
+      montoNum +
+      (montoNum * (interesNum / 100));
 
     const sqlPrestamo = `
       INSERT INTO prestamos
-        (
-          cliente_id,
-          usuario_id,
-          monto,
-          interes,
-          total,
-          plazo,
-          tipo_cuota,
-          tipo_respaldo,
-          garantia,
-          fecha_inicio,
-          estado
-        )
+      (
+        cliente_id,
+        usuario_id,
+        monto,
+        interes,
+        total,
+        plazo,
+        tipo_cuota,
+        tipo_respaldo,
+        garantia,
+        fecha_inicio,
+        estado
+      )
       VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), 'activo')
+      (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        CURDATE(),
+        'activo'
+      )
     `;
 
     db.query(
@@ -206,33 +238,53 @@ const crearPrestamo = (req, res) => {
         plazo,
         tipo_cuota,
         tipo_respaldo,
-        tipo_respaldo === "garantia" ? garantia : null
+        tipo_respaldo === "garantia"
+          ? garantia
+          : null
       ],
       (err, result) => {
+
         if (err) {
-          console.error("Error al crear préstamo:", err);
+
+          console.error(
+            "Error al crear préstamo:",
+            err
+          );
+
           return res.status(500).json({
             mensaje: "Error al crear préstamo"
           });
+
         }
 
-        const prestamoId = result.insertId;
+        const prestamoId =
+          result.insertId;
 
-        // ✅ ✅ CAMBIO CLAVE — CONTROL DE ORDEN
-        if (tipo_respaldo === "fiador" && fiador) {
+        registrarAuditoria(
+          req.usuario.id,
+          "CREAR",
+          "PRESTAMO",
+          prestamoId,
+          `Creó préstamo por C$ ${monto}`
+        );
+
+        if (
+          tipo_respaldo === "fiador" &&
+          fiador
+        ) {
 
           const sqlFiador = `
             INSERT INTO fiadores
-              (
-                prestamo_id,
-                nombre,
-                cedula,
-                telefono,
-                direccion,
-                sexo,
-                estado_civil,
-                parentesco
-              )
+            (
+              prestamo_id,
+              nombre,
+              cedula,
+              telefono,
+              direccion,
+              sexo,
+              estado_civil,
+              parentesco
+            )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           `;
 
@@ -248,26 +300,50 @@ const crearPrestamo = (req, res) => {
               fiador.estado_civil,
               fiador.parentesco
             ],
-            (err) => {
+            err => {
+
               if (err) {
-                console.error("Error guardando fiador:", err);
+
+                console.error(
+                  "Error guardando fiador:",
+                  err
+                );
+
                 return res.status(500).json({
-                  mensaje: "Error guardando fiador"
+                  mensaje:
+                    "Error guardando fiador"
                 });
+
               }
 
-              // ✅ RESPONDER SOLO DESPUÉS DE TODO
-              generarCuotas(prestamoId, total, plazo, tipo_cuota, res);
+              generarCuotas(
+                prestamoId,
+                total,
+                plazo,
+                tipo_cuota,
+                res
+              );
+
             }
           );
 
         } else {
-          // ✅ SI NO HAY FIADOR
-          generarCuotas(prestamoId, total, plazo, tipo_cuota, res);
+
+          generarCuotas(
+            prestamoId,
+            total,
+            plazo,
+            tipo_cuota,
+            res
+          );
+
         }
+
       }
     );
+
   }
+
 };
 
 const crearPrestamoExistente = (req, res) => {
@@ -292,28 +368,39 @@ const crearPrestamoExistente = (req, res) => {
     !tipo_cuota ||
     !fecha_inicio
   ) {
-    return res.status(400).json({ mensaje: "Datos incompletos" });
+    return res.status(400).json({
+      mensaje: "Datos incompletos"
+    });
   }
 
   if (!tipo_respaldo) {
-    return res.status(400).json({ mensaje: "Tipo de respaldo requerido" });
+    return res.status(400).json({
+      mensaje: "Tipo de respaldo requerido"
+    });
   }
 
   if (tipo_respaldo === "fiador") {
     if (!fiador || !fiador.nombre || !fiador.cedula) {
-      return res.status(400).json({ mensaje: "Datos del fiador incompletos" });
+      return res.status(400).json({
+        mensaje: "Datos del fiador incompletos"
+      });
     }
   }
 
   if (tipo_respaldo === "garantia") {
     if (!garantia) {
-      return res.status(400).json({ mensaje: "Debe especificar la garantía" });
+      return res.status(400).json({
+        mensaje: "Debe especificar la garantía"
+      });
     }
   }
 
   const fechaInicio = new Date(fecha_inicio);
+
   if (isNaN(fechaInicio.getTime())) {
-    return res.status(400).json({ mensaje: "Fecha de inicio inválida" });
+    return res.status(400).json({
+      mensaje: "Fecha de inicio inválida"
+    });
   }
 
   const usuario_id = req.usuario.id;
@@ -322,13 +409,22 @@ const crearPrestamoExistente = (req, res) => {
     "SELECT id FROM prestamos WHERE cliente_id = ? AND estado = 'activo' LIMIT 1",
     [cliente_id],
     (err, rows) => {
+
       if (err) {
-        console.error("Error validando préstamo activo:", err);
-        return res.status(500).json({ mensaje: "Error validando préstamo activo" });
+        console.error(
+          "Error validando préstamo activo:",
+          err
+        );
+
+        return res.status(500).json({
+          mensaje: "Error validando préstamo activo"
+        });
       }
 
       if (rows.length > 0) {
-        return res.status(400).json({ mensaje: "Este cliente ya tiene un préstamo activo" });
+        return res.status(400).json({
+          mensaje: "Este cliente ya tiene un préstamo activo"
+        });
       }
 
       crearPrestamoExistenteInterno();
@@ -336,10 +432,18 @@ const crearPrestamoExistente = (req, res) => {
   );
 
   function crearPrestamoExistenteInterno() {
+
     const montoNum = Number(monto);
     const interesNum = Number(interes);
-    const cuotasPagadasNum = Math.max(0, Math.floor(Number(cuotas_pagadas) || 0));
-    const total = montoNum + montoNum * (Number(interesNum) / 100);
+
+    const cuotasPagadasNum = Math.max(
+      0,
+      Math.floor(Number(cuotas_pagadas) || 0)
+    );
+
+    const total =
+      montoNum +
+      montoNum * (Number(interesNum) / 100);
 
     const sqlPrestamo = `
       INSERT INTO prestamos
@@ -371,18 +475,40 @@ const crearPrestamoExistente = (req, res) => {
         plazo,
         tipo_cuota,
         tipo_respaldo,
-        tipo_respaldo === "garantia" ? garantia : null,
+        tipo_respaldo === "garantia"
+          ? garantia
+          : null,
         fechaInicio
       ],
       (err, result) => {
+
         if (err) {
-          console.error("Error al crear préstamo existente:", err);
-          return res.status(500).json({ mensaje: "Error al crear préstamo existente" });
+          console.error(
+            "Error al crear préstamo existente:",
+            err
+          );
+
+          return res.status(500).json({
+            mensaje:
+              "Error al crear préstamo existente"
+          });
         }
 
         const prestamoId = result.insertId;
 
-        if (tipo_respaldo === "fiador" && fiador) {
+        registrarAuditoria(
+          req.usuario.id,
+          "CREAR",
+          "PRESTAMO",
+          prestamoId,
+          `Creó préstamo existente por C$ ${monto}`
+        );
+
+        if (
+          tipo_respaldo === "fiador" &&
+          fiador
+        ) {
+
           const sqlFiador = `
             INSERT INTO fiadores
               (
@@ -411,17 +537,46 @@ const crearPrestamoExistente = (req, res) => {
               fiador.parentesco
             ],
             (err) => {
+
               if (err) {
-                console.error("Error guardando fiador:", err);
-                return res.status(500).json({ mensaje: "Error guardando fiador" });
+                console.error(
+                  "Error guardando fiador:",
+                  err
+                );
+
+                return res.status(500).json({
+                  mensaje:
+                    "Error guardando fiador"
+                });
               }
 
-              generarCuotasExistente(prestamoId, total, plazo, tipo_cuota, fechaInicio, cuotasPagadasNum, res);
+              generarCuotasExistente(
+                prestamoId,
+                total,
+                plazo,
+                tipo_cuota,
+                fechaInicio,
+                cuotasPagadasNum,
+                res
+              );
+
             }
           );
+
         } else {
-          generarCuotasExistente(prestamoId, total, plazo, tipo_cuota, fechaInicio, cuotasPagadasNum, res);
+
+          generarCuotasExistente(
+            prestamoId,
+            total,
+            plazo,
+            tipo_cuota,
+            fechaInicio,
+            cuotasPagadasNum,
+            res
+          );
+
         }
+
       }
     );
   }
@@ -741,7 +896,6 @@ const anularPrestamo = (req, res) => {
   const usuarioId = req.usuario.id;
   const rol = String(req.usuario.rol || "").toLowerCase();
 
-  // Buscar préstamo
   db.query(
     `
     SELECT
@@ -756,6 +910,7 @@ const anularPrestamo = (req, res) => {
 
       if (err) {
         console.error(err);
+
         return res.status(500).json({
           mensaje: "Error consultando préstamo"
         });
@@ -775,7 +930,6 @@ const anularPrestamo = (req, res) => {
         });
       }
 
-      // Verificar pagos registrados
       db.query(
         `
         SELECT COUNT(*) AS total
@@ -789,6 +943,7 @@ const anularPrestamo = (req, res) => {
 
           if (err) {
             console.error(err);
+
             return res.status(500).json({
               mensaje: "Error verificando pagos"
             });
@@ -801,10 +956,12 @@ const anularPrestamo = (req, res) => {
             });
           }
 
-          // Si NO es administrador aplicar regla de 1 hora
           if (rol !== "administrador") {
 
-            const creadoEn = new Date(prestamo.creado_en);
+            const creadoEn = new Date(
+              prestamo.creado_en
+            );
+
             const ahora = new Date();
 
             const diferenciaMinutos =
@@ -818,9 +975,9 @@ const anularPrestamo = (req, res) => {
               });
 
             }
+
           }
 
-          // Guardar auditoría
           db.query(
             `
             INSERT INTO anulaciones_prestamos
@@ -836,12 +993,12 @@ const anularPrestamo = (req, res) => {
 
               if (err) {
                 console.error(err);
+
                 return res.status(500).json({
                   mensaje: "Error registrando la anulación"
                 });
               }
 
-              // Marcar préstamo como anulado
               db.query(
                 `
                 UPDATE prestamos
@@ -853,10 +1010,19 @@ const anularPrestamo = (req, res) => {
 
                   if (err) {
                     console.error(err);
+
                     return res.status(500).json({
                       mensaje: "Error anulando préstamo"
                     });
                   }
+
+                  registrarAuditoria(
+                    req.usuario.id,
+                    "ANULAR",
+                    "PRESTAMO",
+                    id,
+                    `Anuló préstamo. Motivo: ${motivo}`
+                  );
 
                   res.json({
                     mensaje:

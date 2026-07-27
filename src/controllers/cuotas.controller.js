@@ -1,5 +1,8 @@
 const db = require("../config/db");
 const { calcularMoraMensual } = require("../services/moraMensual.service");
+const {
+  registrarAuditoria
+} = require("../services/auditoria.service");
 
 // mysql2 en modo promise
 const pool = db.promise();
@@ -391,6 +394,14 @@ const registrarPagoCuota = async (req, res) => {
     );
 
     await conn.commit();
+
+    registrarAuditoria(
+    req.usuario.id,
+    "PAGO",
+    "PRESTAMO",
+    cuota.prestamo_id,
+    `Registró pago de C$ ${monto} en la cuota #${cuota.numero}`
+  );
 
     res.json({
       mensaje: "Pago registrado correctamente ✅",
