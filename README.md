@@ -10,7 +10,7 @@ El proyecto comenzó como una aplicación CRUD y evolucionó progresivamente has
 
 ---
 
-## ✨ Características principales
+##  Características principales
 
 * Autenticación de usuarios mediante JWT.
 * Control de acceso basado en roles.
@@ -30,7 +30,7 @@ El proyecto comenzó como una aplicación CRUD y evolucionó progresivamente has
 
 ---
 
-## 🏗️ Arquitectura
+##  Arquitectura
 
 El backend está organizado siguiendo una separación por responsabilidades:
 
@@ -75,7 +75,7 @@ Centraliza la configuración necesaria para la conexión y funcionamiento del si
 
 ---
 
-## 🛠️ Tecnologías
+##  Tecnologías
 
 ### Backend
 
@@ -102,7 +102,7 @@ Centraliza la configuración necesaria para la conexión y funcionamiento del si
 
 ---
 
-## 🔐 Autenticación y control de acceso
+##  Autenticación y control de acceso
 
 ACTIVATE utiliza **JWT** para gestionar las sesiones de los usuarios.
 
@@ -117,7 +117,7 @@ Las rutas protegidas utilizan middleware de autenticación para verificar la val
 
 ---
 
-## 💰 Gestión financiera
+##  Gestión financiera
 
 El backend contiene módulos específicos para las principales operaciones del sistema:
 
@@ -143,7 +143,7 @@ Las operaciones que requieren múltiples modificaciones relacionadas utilizan **
 
 ---
 
-## 📋 Auditoría
+##  Auditoría
 
 ACTIVATE incorpora un sistema de auditoría que permite registrar y consultar operaciones realizadas dentro de la aplicación.
 
@@ -151,7 +151,7 @@ Esto proporciona trazabilidad sobre las acciones ejecutadas por los usuarios y f
 
 ---
 
-## 🔒 Seguridad
+##  Seguridad
 
 Entre las medidas implementadas se encuentran:
 
@@ -168,7 +168,7 @@ Entre las medidas implementadas se encuentran:
 
 ---
 
-## ⚙️ Requisitos
+##  Requisitos
 
 Para ejecutar el backend localmente necesitas:
 
@@ -179,7 +179,7 @@ Para ejecutar el backend localmente necesitas:
 
 ---
 
-## 🚀 Instalación
+##  Instalación
 
 Clona el repositorio:
 
@@ -211,7 +211,7 @@ El servidor se iniciará utilizando la configuración definida en las variables 
 
 ---
 
-## 🔑 Variables de entorno
+##  Variables de entorno
 
 El proyecto incluye un archivo `.env.example` para mostrar las variables necesarias sin exponer credenciales reales.
 
@@ -226,7 +226,7 @@ Configura las variables relacionadas con:
 
 ---
 
-## 🔗 Frontend
+##  Frontend
 
 El frontend de ACTIVATE se mantiene en un repositorio independiente:
 
@@ -236,7 +236,7 @@ La aplicación frontend consume la API proporcionada por este backend.
 
 ---
 
-## 📌 Estado del proyecto
+##  Estado del proyecto
 
 **Proyecto desarrollado y utilizado durante aproximadamente tres meses en un negocio familiar.**
 
@@ -244,7 +244,7 @@ Actualmente se mantiene como proyecto de portafolio y aprendizaje, y representa 
 
 ---
 
-## 👨‍💻 Autor
+##  Autor
 
 **Edgard Cuevas**
 
