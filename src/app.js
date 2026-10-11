@@ -6,6 +6,45 @@ const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
+// ==============================
+// 🌐 CORS — orígenes permitidos
+// ==============================
+// Lista separada por comas en la variable CORS_ORIGINS.
+// Sin esa variable se permiten los orígenes estándar de
+// desarrollo (localhost), nunca "*" en producción.
+// ==============================
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const DESARROLLO = [
+  "http://localhost:3000",
+  "http://localhost:5500",
+  "http://localhost:8080",
+  "http://127.0.0.1:3000"
+];
+
+const origenesPermitidos = CORS_ORIGINS.length
+  ? CORS_ORIGINS
+  : DESARROLLO;
+
+const opcionesCors = {
+  origin: (origen, callback) => {
+    // Sin encabezado Origin (móvil, curl, server-to-server): permitido
+    if (!origen) return callback(null, true);
+
+    if (origenesPermitidos.includes(origen)) {
+      return callback(null, true);
+    }
+
+    // false = no se envía cabecera Access-Control-Allow-Origin,
+    // el navegador bloquea la respuesta. No se genera error 500.
+    return callback(null, false);
+  },
+  credentials: true
+};
+
 const wrap = (r) => r.router || r;
 
 const clientesRoutes = wrap(require("./routes/clientes.routes"));
@@ -29,7 +68,7 @@ const app = express();
 app.use(helmet());
 
 // 🌐 CORS
-app.use(cors());
+app.use(cors(opcionesCors));
 
 // 📦 JSON
 app.use(express.json());

@@ -4,8 +4,10 @@ const router = express.Router();
 const auth = require("../middlewares/auth");
 const cuotasController = require("../controllers/cuotas.controller");
 
+// ✅ Requiere token: expone saldos, pagos y moras del préstamo
 router.get(
   "/prestamo/:prestamoId",
+  auth,
   cuotasController.obtenerCuotasPorPrestamo
 );
 router.get("/cobros-hoy", auth, cuotasController.obtenerCobrosHoy);
