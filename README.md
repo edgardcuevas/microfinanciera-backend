@@ -172,7 +172,7 @@ Entre las medidas implementadas se encuentran:
 
 Para ejecutar el backend localmente necesitas:
 
-* Node.js
+* Node.js **24.22.1** (rama 24.x)
 * npm
 * MySQL
 * Git
@@ -208,6 +208,28 @@ npm start
 ```
 
 El servidor se iniciará utilizando la configuración definida en las variables de entorno.
+
+---
+
+##  Node.js en Render
+
+El repositorio fija Node.js **24.22.1** en `.node-version` y limita la versión compatible
+en `package.json`. Para aplicar esta versión a un servicio existente en Render:
+
+1. En el Dashboard, abre el servicio del backend y entra en **Environment**.
+2. Añade o actualiza `NODE_VERSION` con el valor `24.22.1`. Esta variable tiene prioridad
+   sobre `.node-version`.
+3. Guarda los cambios y confirma el redeploy. Render instalará las dependencias usando
+   `npm install` o el comando de construcción configurado para el servicio.
+4. Revisa los logs del build y del servicio. Confirma que el servidor inicia y que
+   `https://<dominio-del-backend>/ping` responde `pong`.
+5. Comprueba el inicio de sesión y los flujos principales del sistema. Si algo falla,
+   vuelve a la configuración anterior de `NODE_VERSION` y redepliega el último commit
+   estable desde **Events**.
+
+No cambies las dependencias ni el esquema de la base de datos como parte de esta
+actualización de runtime. Antes del despliegue, asegúrate de tener acceso a la versión
+estable anterior para poder revertirla.
 
 ---
 

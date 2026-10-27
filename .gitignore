@@ -11,3 +11,4 @@ backend/node_modules/
 *.bat
 .my.cnf
 backend/backups
+backups
